@@ -1,6 +1,6 @@
 /**
  *
- * Microvisor Config Handler 
+ * Microvisor Config Handler
  * Version 1.0.0
  * Copyright © 2022, Twilio
  * Licence: Apache 2.0
@@ -28,10 +28,12 @@ size_t   broker_host_len = 0;
 uint16_t broker_port = 0;
 uint8_t  root_ca[BUF_ROOT_CA] = {0};
 size_t   root_ca_len = 0;
-uint8_t  cert[BUF_CERT] = {0};
-size_t   cert_len = 0;
-uint8_t  private_key[BUF_PRIVATE_KEY] = {0};
-size_t   private_key_len = 0;
+uint8_t  losant_client_id[BUF_LOSANT_CLIENT_ID] = {0};
+size_t   losant_client_id_len = 0;
+uint8_t  losant_access_key[BUF_LOSANT_ACCESS_KEY] = {0};
+size_t   losant_access_key_len = 0;
+uint8_t  losant_access_secret[BUF_LOSANT_ACCESS_SECRET] = {0};
+size_t   losant_access_secret_len = 0;
 
 static MvChannelHandle configuration_channel = 0;
 
@@ -98,12 +100,17 @@ void start_configuration_fetch() {
         {
             .scope = MV_CONFIGKEYFETCHSCOPE_DEVICE,
             .store = MV_CONFIGKEYFETCHSTORE_CONFIG,
-            STRING_ITEM(key, "cert"),
+            STRING_ITEM(key, "losant-client-id"),
         },
         {
             .scope = MV_CONFIGKEYFETCHSCOPE_DEVICE,
             .store = MV_CONFIGKEYFETCHSTORE_SECRET,
-            STRING_ITEM(key, "private_key"),
+            STRING_ITEM(key, "losant-access-key"),
+        },
+        {
+            .scope = MV_CONFIGKEYFETCHSCOPE_DEVICE,
+            .store = MV_CONFIGKEYFETCHSTORE_SECRET,
+            STRING_ITEM(key, "losant-access-secret"),
         },
     };
 
@@ -139,7 +146,7 @@ void receive_configuration_items() {
         return;
     }
 
-    if (response.num_items != 5) {
+    if (response.num_items != 6) {
         server_error("received different number of items than expected 5 != %d", response.num_items);
         pushWorkMessage(OnConfigFailed);
         return;
@@ -174,7 +181,6 @@ void receive_configuration_items() {
     broker_host_len = read_buffer_used;
     server_log("broker_host: %.*s", broker_host_len, broker_host);
 
-
     item.item_index = 1;
     server_log("fetching item %d", item.item_index);
     if ((status = mvReadConfigResponseItem(configuration_channel, &item)) != MV_STATUS_OKAY) {
@@ -200,23 +206,53 @@ void receive_configuration_items() {
     }
     server_log("root_ca[%d] = 0x%02x", root_ca_len-1, root_ca[root_ca_len-1]);
 
-
     item.item_index = 3;
-    consume_binary_success = consume_binary_config_value( &configuration_channel, &item, cert, BUF_CERT, &cert_len);
-    if (!consume_binary_success) {
+    server_log("fetching item %d", item.item_index);
+    if ((status = mvReadConfigResponseItem(configuration_channel, &item)) != MV_STATUS_OKAY) {
+        server_error("error reading config item index %d - %d (MvConfigFetchResult)", item.item_index, status);
         pushWorkMessage(OnConfigFailed);
         return;
     }
-    server_log("cert[%d] = 0x%02x", cert_len-1, cert[cert_len-1]);
+    if (result != MV_CONFIGKEYFETCHRESULT_OK) {
+        server_error("unexpected result reading config item index %d - %d (MvConfigKeyFetchResult)", item.item_index, result);
+        pushWorkMessage(OnConfigFailed);
+        return;
+    }
+    memcpy(losant_client_id, read_buffer, read_buffer_used);
+    losant_client_id_len = read_buffer_used;
+    server_log("losant_client_id: %.*s", losant_client_id_len, losant_client_id);
 
     item.item_index = 4;
-    consume_binary_success = consume_binary_config_value( &configuration_channel, &item, private_key, BUF_PRIVATE_KEY, &private_key_len);
-    if (!consume_binary_success) {
+    server_log("fetching item %d", item.item_index);
+    if ((status = mvReadConfigResponseItem(configuration_channel, &item)) != MV_STATUS_OKAY) {
+        server_error("error reading config item index %d - %d (MvConfigFetchResult)", item.item_index, status);
         pushWorkMessage(OnConfigFailed);
         return;
     }
-    server_log("private_key[%d] = 0x%02x", private_key_len-1, private_key[private_key_len-1]);
+    if (result != MV_CONFIGKEYFETCHRESULT_OK) {
+        server_error("unexpected result reading config item index %d - %d (MvConfigKeyFetchResult)", item.item_index, result);
+        pushWorkMessage(OnConfigFailed);
+        return;
+    }
+    memcpy(losant_access_key, read_buffer, read_buffer_used);
+    losant_access_key_len = read_buffer_used;
+    server_log("losant_access_key: %.*s", losant_access_key_len, losant_access_key);
 
+    item.item_index = 5;
+    server_log("fetching item %d", item.item_index);
+    if ((status = mvReadConfigResponseItem(configuration_channel, &item)) != MV_STATUS_OKAY) {
+        server_error("error reading config item index %d - %d (MvConfigFetchResult)", item.item_index, status);
+        pushWorkMessage(OnConfigFailed);
+        return;
+    }
+    if (result != MV_CONFIGKEYFETCHRESULT_OK) {
+        server_error("unexpected result reading config item index %d - %d (MvConfigKeyFetchResult)", item.item_index, result);
+        pushWorkMessage(OnConfigFailed);
+        return;
+    }
+    memcpy(losant_access_secret, read_buffer, read_buffer_used);
+    losant_access_secret_len = read_buffer_used;
+    server_log("losant_access_secret: %.*s", losant_access_secret_len, losant_access_secret);
 
     pushWorkMessage(OnConfigObtained);
 }

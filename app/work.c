@@ -76,7 +76,7 @@ void pushWorkMessage(enum WorkMessageType type) {
  */
 void start_work_task(void *argument) {
     bool network_on = false;
-    
+
     configure_work_notification_center();
 
     workMessageQueue = osMessageQueueNew(16, sizeof(enum WorkMessageType), NULL);
@@ -86,9 +86,9 @@ void start_work_task(void *argument) {
     }
 
     pushWorkMessage(ConnectNetwork);
-    
+
     enum WorkMessageType messageType;
-    
+
     // The task's main loop
     while (1) {
         osDelay(1);
@@ -126,20 +126,7 @@ void start_work_task(void *argument) {
                     break;
                 case OnBrokerConnected:
                     mqtt_connection_active = true;
-                    start_subscriptions();
-                    break;
-                case OnBrokerSubscribeSucceeded:
                     pushApplicationMessage(OnMqttConnected);
-                    break;
-                case OnBrokerSubscribeFailed:
-                    server_error("subscription failed");
-                    mqtt_disconnect();
-                    break;
-                case OnBrokerUnsubscribeSucceeded:
-                    break;
-                case OnBrokerUnsubscribeFailed:
-                    server_error("unsubscription failed");
-                    mqtt_disconnect();
                     break;
                 case OnBrokerPublishSucceeded:
                     break;
@@ -232,6 +219,7 @@ void start_work_task(void *argument) {
                   break;
 
                 case OnApplicationProducedMessage:
+                  server_log("publishing message!");
                   publish_message(application_message_payload);
                   pushApplicationMessage(OnMqttMessageSent);
                   break;
@@ -276,7 +264,7 @@ bool get_mqtt_message() {
                                           &incoming_message_topic, &incoming_message_topic_len,
                                           &incoming_message_payload, &incoming_message_payload_len,
                                           &_qos, &_retain);
- 
+
 }
 
 /**

@@ -21,7 +21,7 @@
 #include "log_helper.h"
 #include "config_handler.h"
 
-                        
+
 static MvChannelHandle  mqtt_channel = 0;
 static bool             broker_connected = false;
 static uint32_t         correlation_id = 0;
@@ -60,34 +60,22 @@ void start_mqtt_connect() {
         return;
     }
 
+    struct MvSizedString username = {
+        .data = (uint8_t *)losant_access_key,
+        .length = losant_access_key_len
+    };
+
+    struct MvSizedString password = {
+        .data = (uint8_t *)losant_access_secret,
+        .length = losant_access_secret_len
+    };
+
     struct MvMqttAuthentication authentication = {
-        .method = MV_MQTTAUTHENTICATIONMETHOD_NONE,
+        .method = MV_MQTTAUTHENTICATIONMETHOD_USERNAMEPASSWORD,
         .username_password = {
-            .username = {NULL, 0},
-            .password = {NULL, 0}
+            .username = username,
+            .password = password
         }
-    };
-
-    struct MvSizedString device_certs[] = {
-        {
-            .data = (uint8_t *)cert,
-            .length = cert_len
-        },
-    };
-
-    struct MvTlsCertificateChain device_certificate = {
-        .num_certs = 1,
-        .certs = device_certs
-    };
-
-    struct MvSizedString key = {
-        .data = (uint8_t *)private_key,
-        .length = private_key_len
-    };
-
-    struct MvOwnTlsCertificateChain device_credentials = {
-        .chain = device_certificate,
-        .key = key
     };
 
     struct MvSizedString ca_certs[] = {
@@ -104,19 +92,19 @@ void start_mqtt_connect() {
 
     struct MvTlsCredentials tls_credentials = {
         .cacert = server_ca_certificate,
-        .clientcert = device_credentials,
+        .clientcert.chain.num_certs=0
     };
 
     struct MvMqttConnectRequest request = {
-        .protocol_version = MV_MQTTPROTOCOLVERSION_V5,
+        .protocol_version = MV_MQTTPROTOCOLVERSION_V3_1_1,
         .host = {
             .data = broker_host,
             .length = broker_host_len
         },
         .port = broker_port,
         .clientid = {
-            .data = client,
-            .length = client_len 
+            .data = losant_client_id,
+            .length = losant_client_id_len
         },
         .authentication = authentication,
         .tls_credentials = &tls_credentials,
@@ -124,6 +112,8 @@ void start_mqtt_connect() {
         .clean_start = 0,
         .will = NULL,
     };
+
+    server_log("connecting!");
 
     status = mvMqttRequestConnect(mqtt_channel, &request);
     if (status != MV_STATUS_OKAY) {
@@ -137,71 +127,9 @@ bool is_broker_connected() {
     return broker_connected;
 }
 
-void start_subscriptions() {
-    char topic_str[128];
-    sprintf(topic_str, "command/device/%.*s", client_len, client);
-
-    enum MvStatus status;
-
-    const struct MvMqttSubscription subscriptions[] = {
-        {
-            .topic = {
-                .data = (uint8_t *)topic_str,
-                .length = strlen(topic_str)
-            },
-            .desired_qos = 0,
-            .nl = 0,
-            .rap = 0,
-            .rh = 0,
-        },
-    };
-    temp_num_items = sizeof(subscriptions)/sizeof(struct MvMqttSubscription);
-
-    const struct MvMqttSubscribeRequest request = {
-        .correlation_id = correlation_id++,
-        .subscriptions = subscriptions,
-        .num_subscriptions = temp_num_items,
-    };
-
-    status = mvMqttRequestSubscribe(mqtt_channel, &request);
-    if (status != MV_STATUS_OKAY) {
-        server_error("mvMqttRequestSubscribe returned 0x%02x\n", (int) status);
-        pushWorkMessage(OnBrokerSubscriptionRequestFailed);
-        return;
-    }
-}
-
-void end_subscriptions() {
-    char topic_str[128];
-    sprintf(topic_str, "command/device/%.*s", client_len, client);
-
-    enum MvStatus status;
-
-    const struct MvSizedString topics[] = {
-        {
-            .data = (const uint8_t *)topic_str,
-            .length = (uint16_t)strlen(topic_str),
-        }
-    };
-    temp_num_items = sizeof(topics)/sizeof(struct MvSizedString);
-
-    const struct MvMqttUnsubscribeRequest request = {
-        .correlation_id = correlation_id++,
-        .topics = topics,
-        .num_topics = temp_num_items,
-    };
-
-    status = mvMqttRequestUnsubscribe(mqtt_channel, &request);
-    if (status != MV_STATUS_OKAY) {
-        server_error("mvMqttRequestUnsubscribe returned 0x%02x\n", (int) status);
-        pushWorkMessage(OnBrokerUnsubscriptionRequestFailed);
-        return;
-    }
-}
-
 void publish_message(const char* payload) {
     char topic_str[128];
-    sprintf(topic_str, "sensor/device/%.*s", client_len, client); // For AWS, requires policy to allow publish access to "arn:aws:iot:<<region>>:<<account>>:topic/sensor/device/<<DEVICE_SID>>"
+    sprintf(topic_str, "losant/%.*s/state", losant_client_id_len, losant_client_id);
 
     enum MvStatus status;
 

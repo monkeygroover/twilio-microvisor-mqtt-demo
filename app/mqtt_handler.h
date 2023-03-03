@@ -33,8 +33,6 @@ extern "C" {
  */
 void start_mqtt_connect();
 bool is_broker_connected();
-void start_subscriptions();
-void end_subscriptions();
 void publish_message(const char *payload);
 void teardown_mqtt_connect();
 

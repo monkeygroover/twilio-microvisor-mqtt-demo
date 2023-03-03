@@ -32,8 +32,9 @@
 #define BUF_CLIENT_SIZE 34
 #define BUF_BROKER_HOST 128
 #define BUF_ROOT_CA 1024
-#define BUF_CERT 1024
-#define BUF_PRIVATE_KEY 1536
+#define BUF_LOSANT_CLIENT_ID 128
+#define BUF_LOSANT_ACCESS_KEY 128
+#define BUF_LOSANT_ACCESS_SECRET 128
 
 #define BUF_READ_BUFFER 3*1024
 
@@ -62,10 +63,12 @@ extern size_t   broker_host_len;
 extern uint16_t broker_port;
 extern uint8_t  root_ca[BUF_ROOT_CA];
 extern size_t   root_ca_len;
-extern uint8_t  cert[BUF_CERT];
-extern size_t   cert_len;
-extern uint8_t  private_key[BUF_PRIVATE_KEY];
-extern size_t   private_key_len;
+extern uint8_t  losant_client_id[BUF_LOSANT_CLIENT_ID];
+extern size_t   losant_client_id_len;
+extern uint8_t  losant_access_key[BUF_LOSANT_ACCESS_KEY];
+extern size_t   losant_access_key_len;
+extern uint8_t  losant_access_secret[BUF_LOSANT_ACCESS_SECRET];
+extern size_t   losant_access_secret_len;
 
 
 #ifdef __cplusplus
