@@ -137,7 +137,6 @@ void application_poll() {
         longitude += 0.005 * cos(random_bearing);
 
        sprintf(application_message_payload, "{\"data\":{\"location\":[%.8f,%.8f]}}", latitude, longitude);
-       server_log("sending: %.*s", strlen(application_message_payload), application_message_payload);
        pushWorkMessage(OnApplicationProducedMessage);
     }
 }

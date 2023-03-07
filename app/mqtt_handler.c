@@ -158,7 +158,7 @@ void publish_message(const char* payload) {
         return;
     }
 
-    server_log("published to %s", topic_str);
+    server_log("publishing: %.*s %.*s", strlen(topic_str), topic_str, strlen(payload), payload);
 }
 
 void mqtt_handle_readable_event() {

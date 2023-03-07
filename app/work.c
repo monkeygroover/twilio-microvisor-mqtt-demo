@@ -219,7 +219,6 @@ void start_work_task(void *argument) {
                   break;
 
                 case OnApplicationProducedMessage:
-                  server_log("publishing message!");
                   publish_message(application_message_payload);
                   pushApplicationMessage(OnMqttMessageSent);
                   break;
